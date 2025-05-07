@@ -100,7 +100,7 @@ const ProductForm = () => {
         toast.info('Product Deleted Successfully');
       }
     } catch (err) {
-      console.error('Error deleting product:', err);
+      console.error('Error Deleting product:', err);
       toast.error('Failed to delete product');
     }
   };
