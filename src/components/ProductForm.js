@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import JsBarcode from 'jsbarcode';
 import jsPDF from 'jspdf';
-import { Modal, Button } from 'react-bootstrap';
+import { Modal, Button, Spinner } from 'react-bootstrap';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -13,19 +13,22 @@ const ProductForm = () => {
   const [editId, setEditId] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [barcodeInfo, setBarcodeInfo] = useState(null);
+  const [loading, setLoading] = useState(false);
   const barcodeRefs = useRef({});
 
-  // Fetch all products from the backend
   const fetchProducts = async () => {
+    setLoading(true);
     try {
       const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/products`);
       setProducts(res.data);
       setTimeout(() => {
         res.data.forEach((p) => generateBarcode(p._id));
-      }, 0);
+      }, 100);
     } catch (err) {
       console.error('Error while fetching products:', err);
       toast.error('Failed to fetch products');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -39,8 +42,14 @@ const ProductForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const { name, quantity, price } = form;
+    if (!name.trim() || quantity <= 0 || price <= 0) {
+      toast.warning('Please enter valid product details.');
+      return;
+    }
+
     try {
-      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/products`, form);
+      await axios.post(`${process.env.REACT_APP_API_URL}/api/products`, form);
       setForm({ name: '', quantity: '', price: '', expiryDate: '', manufacturingDate: '' });
       fetchProducts();
       toast.success('Product Added successfully!');
@@ -52,11 +61,24 @@ const ProductForm = () => {
 
   const handleEdit = (product) => {
     setEditId(product._id);
-    setEditForm({ name: product.name, quantity: product.quantity, price: product.price, expiryDate: product.expiryDate, manufacturingDate: product.manufacturingDate });
+    setEditForm({
+      name: product.name,
+      quantity: product.quantity,
+      price: product.price,
+      expiryDate: product.expiryDate,
+      manufacturingDate: product.manufacturingDate,
+      barcode: product._id,
+    });
     setShowModal(true);
   };
 
   const handleSaveEdit = async () => {
+    const { name, quantity, price } = editForm;
+    if (!name.trim() || quantity <= 0 || price <= 0) {
+      toast.warning('Please enter valid updated details.');
+      return;
+    }
+
     try {
       await axios.put(`${process.env.REACT_APP_API_URL}/api/products/${editId}`, editForm);
       fetchProducts();
@@ -97,30 +119,26 @@ const ProductForm = () => {
   };
 
   const generatePDFWithBarcodes = (product) => {
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'A4',
-    });
+    if (product.quantity > 100) {
+      toast.warning('Quantity too high for barcode PDF. Limit is 100.');
+      return;
+    }
 
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'A4' });
     const canvas = barcodeRefs.current[product._id];
     if (!canvas) return;
 
     const imgData = canvas.toDataURL('image/png');
-
-    // Setting initial position
     let yOffset = 10;
 
-    // Repeat the barcode based on quantity
     for (let i = 0; i < product.quantity; i++) {
       pdf.addImage(imgData, 'PNG', 10, yOffset, 40, 20);
       pdf.text(product.name, 55, yOffset + 10);
-      yOffset += 25; // Increase Y position for the next barcode
+      yOffset += 25;
 
-      // If the content exceeds the page height, add a new page
       if (yOffset > 280) {
         pdf.addPage();
-        yOffset = 10; // Reset Y position
+        yOffset = 10;
       }
     }
 
@@ -137,6 +155,13 @@ const ProductForm = () => {
     }
   };
 
+  const handleExportAllBarcodes = () => {
+    products.forEach((p) => generateBarcode(p._id));
+    setTimeout(() => {
+      products.forEach((p) => generatePDFWithBarcodes(p));
+    }, 200);
+  };
+
   useEffect(() => {
     fetchProducts();
   }, []);
@@ -150,47 +175,31 @@ const ProductForm = () => {
       <form onSubmit={handleSubmit} className="mb-4">
         <div className="row g-3">
           <div className="col-md-4">
-            <input
-              type="text"
-              className="form-control"
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              placeholder="Product Name"
-              required
-            />
+            <input type="text" className="form-control" name="name" value={form.name} onChange={handleChange} placeholder="Product Name" required />
           </div>
           <div className="col-md-3">
-            <input
-              type="number"
-              className="form-control"
-              name="quantity"
-              value={form.quantity}
-              onChange={handleChange}
-              placeholder="Quantity"
-              required
-            />
+            <input type="number" className="form-control" name="quantity" value={form.quantity} onChange={handleChange} placeholder="Quantity" required />
           </div>
           <div className="col-md-3">
-            <input
-              type="number"
-              className="form-control"
-              name="price"
-              value={form.price}
-              onChange={handleChange}
-              placeholder="Price (₹)"
-              required
-            />
+            <input type="number" className="form-control" name="price" value={form.price} onChange={handleChange} placeholder="Price (₹)" required />
           </div>
           <div className="col-md-2">
-            <button className="btn btn-primary w-100" type="submit">
-              Add
-            </button>
+            <button className="btn btn-primary w-100" type="submit">Add</button>
           </div>
         </div>
       </form>
 
-      {/* Show Expiry and Manufacturing Date after Barcode Scan */}
+      <div className="input-group mb-3">
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Scan or Enter Barcode"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleBarcodeScan(e.target.value);
+          }}
+        />
+      </div>
+
       {barcodeInfo && (
         <div className="alert alert-info mt-3">
           <h5>Product Info</h5>
@@ -200,60 +209,53 @@ const ProductForm = () => {
       )}
 
       <h3 className="text-center mt-5 mb-3">📦 Product List</h3>
-      <table className="table table-bordered table-hover">
-        <thead className="table-dark">
-          <tr>
-            <th>Name</th>
-            <th>Quantity</th>
-            <th>Price (₹)</th>
-            <th style={{ width: '140px' }}>Barcode</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((p) => (
-            <tr key={p._id}>
-              <td>{p.name}</td>
-              <td>{p.quantity}</td>
-              <td>{p.price}</td>
-              <td>
-                <canvas
-                  ref={(el) => (barcodeRefs.current[p._id] = el)}
-                  style={{
-                    maxWidth: '100%',
-                    transform: 'scale(0.85)',
-                    transformOrigin: 'left center',
-                  }}
-                />
-                <button
-                  className="btn btn-outline-success btn-sm mt-1"
-                  onClick={() => generatePDFWithBarcodes(p)}
-                >
-                  📄 PDF
-                </button>
-              </td>
-              <td>
-                <div className="d-flex gap-1">
-                  <button
-                    className="btn btn-warning btn-sm"
-                    onClick={() => handleEdit(p)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="btn btn-outline-danger btn-sm"
-                    onClick={() => handleDelete(p._id)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
 
-      {/* Edit Modal */}
+      <div className="mb-3 text-end">
+        <Button variant="success" onClick={handleExportAllBarcodes}>
+          Export All Barcodes to PDF
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="text-center my-5"><Spinner animation="border" /></div>
+      ) : (
+        <table className="table table-bordered table-hover">
+          <thead className="table-dark">
+            <tr>
+              <th>Name</th>
+              <th>Quantity</th>
+              <th>Price (₹)</th>
+              <th style={{ width: '140px' }}>Barcode</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((p) => (
+              <tr key={p._id}>
+                <td>{p.name}</td>
+                <td>{p.quantity}</td>
+                <td>{p.price}</td>
+                <td>
+                  <canvas
+                    ref={(el) => (barcodeRefs.current[p._id] = el)}
+                    style={{ maxWidth: '100%', transform: 'scale(0.85)', transformOrigin: 'left center' }}
+                  />
+                  <button className="btn btn-outline-success btn-sm mt-1" onClick={() => generatePDFWithBarcodes(p)}>
+                    📄 PDF
+                  </button>
+                </td>
+                <td>
+                  <div className="d-flex gap-1">
+                    <button className="btn btn-warning btn-sm" onClick={() => handleEdit(p)}>Edit</button>
+                    <button className="btn btn-outline-danger btn-sm" onClick={() => handleDelete(p._id)}>Delete</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
       <Modal show={showModal} onHide={() => setShowModal(false)}>
         <Modal.Header closeButton className="bg-primary text-white">
           <Modal.Title>Edit Product</Modal.Title>
@@ -261,62 +263,28 @@ const ProductForm = () => {
         <Modal.Body>
           <div className="mb-3">
             <label className="form-label">Name</label>
-            <input
-              type="text"
-              className="form-control"
-              name="name"
-              value={editForm.name}
-              onChange={handleEditChange}
-            />
+            <input type="text" className="form-control" name="name" value={editForm.name} onChange={handleEditChange} />
           </div>
           <div className="mb-3">
             <label className="form-label">Quantity</label>
-            <input
-              type="number"
-              className="form-control"
-              name="quantity"
-              value={editForm.quantity}
-              onChange={handleEditChange}
-            />
+            <input type="number" className="form-control" name="quantity" value={editForm.quantity} onChange={handleEditChange} />
           </div>
           <div className="mb-3">
             <label className="form-label">Price</label>
-            <input
-              type="number"
-              className="form-control"
-              name="price"
-              value={editForm.price}
-              onChange={handleEditChange}
-            />
+            <input type="number" className="form-control" name="price" value={editForm.price} onChange={handleEditChange} />
           </div>
           <div className="mb-3">
             <label className="form-label">Expiry Date</label>
-            <input
-              type="date"
-              className="form-control"
-              name="expiryDate"
-              value={editForm.expiryDate}
-              onChange={handleEditChange}
-            />
+            <input type="date" className="form-control" name="expiryDate" value={editForm.expiryDate} onChange={handleEditChange} />
           </div>
           <div className="mb-3">
             <label className="form-label">Manufacturing Date</label>
-            <input
-              type="date"
-              className="form-control"
-              name="manufacturingDate"
-              value={editForm.manufacturingDate}
-              onChange={handleEditChange}
-            />
+            <input type="date" className="form-control" name="manufacturingDate" value={editForm.manufacturingDate} onChange={handleEditChange} />
           </div>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
-            Close
-          </Button>
-          <Button variant="primary" onClick={handleSaveEdit}>
-            Save Changes
-          </Button>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>Close</Button>
+          <Button variant="primary" onClick={handleSaveEdit}>Save Changes</Button>
         </Modal.Footer>
       </Modal>
     </div>
