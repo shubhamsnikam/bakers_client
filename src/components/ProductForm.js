@@ -19,7 +19,7 @@ const ProductForm = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}api/products`);
+      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/products`);
       setProducts(res.data);
       setTimeout(() => {
         res.data.forEach((p) => generateBarcode(p._id));
