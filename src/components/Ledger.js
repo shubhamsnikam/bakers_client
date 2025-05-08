@@ -18,7 +18,7 @@ const Ledger = () => {
   // Fetch products from API
   const fetchProducts = async () => {
     try {
-      const res = await axios.get('/api/products');
+      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/products`);
       setProducts(res.data);
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -41,7 +41,7 @@ const Ledger = () => {
   const fetchLedger = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get('/api/ledger');
+      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/ledger`);
       const allLedgers = res.data
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort ledger by date (latest first)
       setLedgerData(allLedgers);
@@ -58,7 +58,7 @@ const Ledger = () => {
   // Fetch customers for selection in the form
   const fetchCustomers = async () => {
     try {
-      const res = await axios.get('/api/customers');
+      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/customers`);
       setCustomers(res.data);
     } catch (err) {
       console.error('Error fetching customers:', err);
@@ -70,6 +70,12 @@ const Ledger = () => {
     fetchCustomers();
     fetchProducts();
     fetchLedger();
+
+    // Auto-refresh ledger data every 10 seconds
+    const interval = setInterval(fetchLedger, 10000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
   }, [fetchLedger]);
 
   // Handle customer-based filtering
@@ -104,7 +110,7 @@ const Ledger = () => {
 
     try {
       const productNames = newProductIds.map(id => products.find(p => p._id === id)?.name).filter(Boolean);
-      await axios.post('/api/ledger', {
+      await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/ledger`, {
         customer: newCustomerId,
         products: productNames,
         total: parseFloat(newTotal),
@@ -121,20 +127,19 @@ const Ledger = () => {
   };
 
   // Mark a ledger entry as paid
-const markAsPaid = async (id) => {
-  try {
-    const res = await axios.patch(`/api/ledger/${id}/pay`);
-    if (res.data.message === 'Ledger marked as paid') {
-      toast.success('Ledger Marked as Paid');
-      fetchLedger(); // Refresh ledger data
-    } else {
+  const markAsPaid = async (id) => {
+    try {
+      const res = await axios.patch(`${process.env.REACT_APP_BACKEND_URL}/api/ledger/${id}/pay`);
+      if (res.data.message === 'Ledger marked as paid') {
+        toast.success('Ledger Marked as Paid');
+        fetchLedger(); // Refresh ledger data
+      } else {
+        toast.error('Failed to Mark as Paid');
+      }
+    } catch (err) {
       toast.error('Failed to Mark as Paid');
     }
-  } catch (err) {
-    toast.error('Failed to Mark as Paid');
-  }
-};
-
+  };
 
   return (
     <div className="container mt-4">
@@ -172,52 +177,6 @@ const markAsPaid = async (id) => {
           <button className="btn btn-secondary mt-2 ms-2" onClick={handleClearFilters}>Clear Filters</button>
         </div>
       </div>
-
-      {/* New Ledger Entry Form
-      <div className="row mb-4">
-        <div className="col-md-3">
-          <label>Select Customer</label>
-          <select
-            className="form-control"
-            value={newCustomerId}
-            onChange={(e) => setNewCustomerId(e.target.value)}
-          >
-            <option value="">Select Customer</option>
-            {customers.map(c => (
-              <option key={c._id} value={c._id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="col-md-3">
-          <label>Select Products</label>
-          <select
-            multiple
-            className="form-control"
-            value={newProductIds}
-            onChange={(e) => setNewProductIds(Array.from(e.target.selectedOptions, option => option.value))}
-          >
-            {products.map(p => (
-              <option key={p._id} value={p._id}>{p.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="col-md-3">
-          <label>Total Amount</label>
-          <input
-            type="number"
-            className="form-control"
-            value={newTotal}
-            onChange={e => setNewTotal(e.target.value)}
-            placeholder="Enter Total Amount"
-          />
-        </div>
-
-        <div className="col-md-3 align-self-end">
-          <button className="btn btn-success mt-2" onClick={handleAddLedger}>Add Ledger</button>
-        </div>
-      </div> */}
 
       {/* Ledger Display */}
       {loading ? (

@@ -189,16 +189,6 @@ const ProductForm = () => {
         </div>
       </form>
 
-      <div className="input-group mb-3">
-        <input
-          type="text"
-          className="form-control"
-          placeholder="Scan or Enter Barcode"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleBarcodeScan(e.target.value);
-          }}
-        />
-      </div>
 
       {barcodeInfo && (
         <div className="alert alert-info mt-3">
@@ -210,11 +200,7 @@ const ProductForm = () => {
 
       <h3 className="text-center mt-5 mb-3">📦 Product List</h3>
 
-      <div className="mb-3 text-end">
-        <Button variant="success" onClick={handleExportAllBarcodes}>
-          Export All Barcodes to PDF
-        </Button>
-      </div>
+      
 
       {loading ? (
         <div className="text-center my-5"><Spinner animation="border" /></div>

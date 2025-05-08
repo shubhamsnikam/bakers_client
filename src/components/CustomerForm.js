@@ -9,7 +9,7 @@ const CustomerForm = () => {
 
   const fetchCustomers = async () => {
     try {
-      const res = await axios.get('/api/customers');
+      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/customers`);
       setCustomers(res.data);
     } catch (err) {
       console.error('Error fetching customers:', err);
@@ -24,7 +24,7 @@ const CustomerForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('/api/customers', form);
+      await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/customers`, form);
       setForm({ name: '', address: '', contact: '' });
       fetchCustomers();
       toast.success('Customer Added Successfully!');
@@ -36,12 +36,18 @@ const CustomerForm = () => {
 
   useEffect(() => {
     fetchCustomers();
+
+    // Set interval to auto-refresh customer list every 10 seconds
+    const interval = setInterval(fetchCustomers, 10000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="container mt-4">
       <ToastContainer position="top-center" autoClose={2000} />
-      <h2> Add Customer </h2>
+      <h2>Add Customer</h2>
       <form onSubmit={handleSubmit} className="mb-4">
         <div className="mb-3">
           <label className="form-label">Customer Name</label>
