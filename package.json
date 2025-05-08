@@ -24,8 +24,8 @@
     "html2pdf.js": "^0.10.1"
   },
   "scripts": {
-    "start": "npm start",
-    "build": "npm run build",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
     "server": "node ../server/server.js",
     "dev": "concurrently \"npm run server\" \"npm run start\""
   },
