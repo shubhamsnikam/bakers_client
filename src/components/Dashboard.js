@@ -9,8 +9,8 @@ const Dashboard = () => {
       <div className="bakery-overlay container-fluid mt-4">
         <div className="row">
           <div className="col-12 text-center">
-            <h1 className="display-4 text-primary"> इंद्रायणी बेकर्स, स्वीट्स अँड केक्स </h1>
-            <p className="lead text-secondary">Welcome to the Best Backery & Sweet Shop in Town!</p>
+            <h1 className="display-4 text-primary">इंद्रायणी  स्वीट्स अँड बेकर्स</h1>
+            <p className="lead text-secondary">Welcome to the best bakery and sweets shop in town!</p>
           </div>
         </div>
         <hr />
