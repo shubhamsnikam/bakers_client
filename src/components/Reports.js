@@ -12,8 +12,8 @@ const Reports = () => {
     setLoading(true);
     setError('');
     try {
-      const daily = await axios.get(`/api/reports/daily`);
-      const monthly = await axios.get(`api/reports/monthly`);
+      const daily = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/reports/daily`);
+      const monthly = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/reports/monthly`);
       setDailyReport(daily.data);
       setMonthlyReport(monthly.data);
     } catch (err) {
