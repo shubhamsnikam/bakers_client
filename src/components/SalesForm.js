@@ -2,9 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { useReactToPrint } from 'react-to-print';
 import InvoicePreview from './InvoicePreview';
-import html2pdf from 'html2pdf.js'; 
+import html2pdf from 'html2pdf.js';
 
 const SalesForm = () => {
   const [products, setProducts] = useState([]);
@@ -20,8 +19,8 @@ const SalesForm = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res1 = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/products`);
-        const res2 = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/customers`);
+        const res1 = await axios.get(`/api/products`);
+        const res2 = await axios.get(`/api/customers`);
         setProducts(res1.data);
         setCustomers(res2.data);
       } catch (err) {
@@ -123,13 +122,13 @@ const SalesForm = () => {
   const handleGeneratePDF = () => {
     const element = componentRef.current;
     const opt = {
-      margin:       0.3,
-      filename:     `Invoice_${invoiceNo}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2 },
-      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      margin: 0.3,
+      filename: `Invoice_${invoiceNo}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
-  
+
     html2pdf().from(element).set(opt).save();
   };
 

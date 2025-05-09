@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
-
 import qrCodeBase64 from '../components/assets/img.jpeg'
+import logo from '../components/assets/logo.png'
 
 const InvoicePreview = forwardRef(({ customer = {}, saleItems = [], products = [], invoiceNo = '', totalAmount = 0 }, ref) => {
   const total = saleItems.reduce((sum, item) => {
@@ -18,9 +18,10 @@ const InvoicePreview = forwardRef(({ customer = {}, saleItems = [], products = [
     >
       {/* Company Header */}
       <div className="text-center mb-4">
-        <img src="/logo.png" alt="Bakery Logo" style={{ height: '80px' }} />
-        <h3 className="mt-2">इंद्रायणी बेकर्स, स्वीट्स अँड बेकर्स</h3>
-        <p>Indrayani Backers Khanapur Road Vita 415311 | Contact:9146006006</p>
+        <img src={logo} alt="Bakery Logo" style={{ height: '100px' }} />
+        <h3 className="mt-2"> अलंकृत ज्वेल हब </h3>
+        <p> Address: Shop No.4,Arthav CHS, Plot No.C-5,Sector 20, Gavdevi Chowk,Near Bhagat School,Neral,Navi Mumbai. </p>
+        <p> Contact:9920445447 / 9987164165 </p>
         <hr />
       </div>
 
