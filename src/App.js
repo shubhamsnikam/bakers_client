@@ -26,8 +26,7 @@ function App() {
       </Routes>
 
       <ToastContainer position="top-center" autoClose={2000} />
-    </Router>
-     
+    </Router>     
 
   );
 }
