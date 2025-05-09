@@ -18,7 +18,7 @@ const Ledger = () => {
   // Fetch products from API
   const fetchProducts = async () => {
     try {
-      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/products`);
+      const res = await axios.get(`/api/products`);
       setProducts(res.data);
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -41,7 +41,7 @@ const Ledger = () => {
   const fetchLedger = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/ledger`);
+      const res = await axios.get(`/api/ledger`);
       const allLedgers = res.data
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort ledger by date (latest first)
       setLedgerData(allLedgers);
@@ -58,7 +58,7 @@ const Ledger = () => {
   // Fetch customers for selection in the form
   const fetchCustomers = async () => {
     try {
-      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/customers`);
+      const res = await axios.get(`/api/customers`);
       setCustomers(res.data);
     } catch (err) {
       console.error('Error fetching customers:', err);
@@ -110,7 +110,7 @@ const Ledger = () => {
 
     try {
       const productNames = newProductIds.map(id => products.find(p => p._id === id)?.name).filter(Boolean);
-      await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/ledger`, {
+      await axios.post(`/api/ledger`, {
         customer: newCustomerId,
         products: productNames,
         total: parseFloat(newTotal),
@@ -129,7 +129,7 @@ const Ledger = () => {
   // Mark a ledger entry as paid
   const markAsPaid = async (id) => {
     try {
-      const res = await axios.patch(`${process.env.REACT_APP_BACKEND_URL}/api/ledger/${id}/pay`);
+      const res = await axios.patch(`/api/ledger/${id}/pay`);
       if (res.data.message === 'Ledger marked as paid') {
         toast.success('Ledger Marked as Paid');
         fetchLedger(); // Refresh ledger data
