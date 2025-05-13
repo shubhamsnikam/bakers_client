@@ -24,7 +24,7 @@ const ProductForm = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`/api/products`);
+      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/products`);
       setProducts(res.data);
       setTimeout(() => {
         res.data.forEach((p) => generateBarcode(p._id));
@@ -63,7 +63,7 @@ const ProductForm = () => {
     };
 
     try {
-      await axios.post(`/api/products`, payload);
+      await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/products`, payload);
       setForm({ name: '', quantity: '', price: '', weight: '', expiryDate: '', manufacturingDate: '' });
       fetchProducts();
       toast.success('Product Added successfully!');
@@ -95,7 +95,7 @@ const ProductForm = () => {
     }
 
     try {
-      await axios.put(`/api/products/${editId}`, editForm);
+      await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/products/${editId}`, editForm);
       fetchProducts();
       setShowModal(false);
       setEditId(null);
@@ -110,7 +110,7 @@ const ProductForm = () => {
     try {
       const confirmation = window.confirm("Are you sure you want to delete this product?");
       if (confirmation) {
-        await axios.delete(`/api/products/${id}`);
+        await axios.delete(`${process.env.REACT_APP_BACKEND_URL}/api/products/${id}`);
         fetchProducts();
         toast.info('Product Deleted Successfully');
       }
@@ -154,7 +154,7 @@ const ProductForm = () => {
 
   const handleBarcodeScan = async (barcode) => {
     try {
-      const response = await axios.get(`/api/products/barcode/${barcode}`);
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/products/barcode/${barcode}`);
       setBarcodeInfo(response.data);
     } catch (err) {
       console.error('Error fetching product by barcode:', err);
