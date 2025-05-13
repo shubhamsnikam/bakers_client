@@ -73,7 +73,7 @@ const SalesForm = () => {
 
       // If manually adding a customer
       if (!finalCustomerId && newCustomerName.trim() && newCustomerAddress.trim() && newCustomerContact.trim()) {
-        const newCustomer = await axios.post('${process.env.REACT_APP_BACKEND_URL}/api/customers', {
+        const newCustomer = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/customers`, {
           name: newCustomerName.trim(),
           address: newCustomerAddress.trim(),
           contact: newCustomerContact.trim()
