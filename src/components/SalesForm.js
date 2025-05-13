@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import Select from 'react-select';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import InvoicePreview from './InvoicePreview';
@@ -14,13 +15,16 @@ const SalesForm = () => {
   const [totalAmount, setTotalAmount] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [savedSaleId, setSavedSaleId] = useState(null);
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerAddress, setNewCustomerAddress] = useState('');
+  const [newCustomerContact, setNewCustomerContact] = useState('');
   const componentRef = useRef();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res1 = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/products`);
-        const res2 = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/customers`);
+        const res1 = await axios.get(`/api/products`);
+        const res2 = await axios.get(`/api/customers`);
         setProducts(res1.data);
         setCustomers(res2.data);
       } catch (err) {
@@ -55,16 +59,38 @@ const SalesForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!customerId || saleItems.length === 0) {
+
+    if (
+      (!customerId && (!newCustomerName.trim() || !newCustomerAddress.trim() || !newCustomerContact.trim())) ||
+      saleItems.length === 0
+    ) {
       toast.warning('Please select a customer and at least one product.');
       return;
     }
 
     try {
-      const saleRes = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/sales`, {
-        customer: customerId,
+      let finalCustomerId = customerId;
+
+      // If manually adding a customer
+      if (!finalCustomerId && newCustomerName.trim() && newCustomerAddress.trim() && newCustomerContact.trim()) {
+        const newCustomer = await axios.post('/api/customers', {
+          name: newCustomerName.trim(),
+          address: newCustomerAddress.trim(),
+          contact: newCustomerContact.trim()
+        });
+
+        finalCustomerId = newCustomer.data._id;
+
+        // ✅ Important fix: update state so ledger functions get the correct customerId
+        setCustomerId(finalCustomerId);
+      }
+
+      // Save the sale
+      const saleRes = await axios.post(`/api/sales`, {
+        customer: finalCustomerId,
         items: saleItems
       });
+
       setSavedSaleId(saleRes.data._id);
       setShowModal(true);
       toast.success('Sale Saved. Choose an option below.');
@@ -74,9 +100,10 @@ const SalesForm = () => {
     }
   };
 
+
   const handleAddLedger = async () => {
     try {
-      await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/ledger`, {
+      await axios.post(`/api/ledger`, {
         sale: savedSaleId,
         customer: customerId,
         total: totalAmount,
@@ -94,14 +121,14 @@ const SalesForm = () => {
 
   const handleMarkAsPaid = async () => {
     try {
-      const ledgerRes = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/ledger`, {
+      const ledgerRes = await axios.post(`/api/ledger`, {
         sale: savedSaleId,
         customer: customerId,
         total: totalAmount,
         products: saleItems.map(item => item.product),
       });
 
-      await axios.patch(`${process.env.REACT_APP_BACKEND_URL}/api/ledger/${ledgerRes.data._id}/pay`);
+      await axios.patch(`/api/ledger/${ledgerRes.data._id}/pay`);
       resetForm();
       toast.success('Ledger Added & Marked as Paid');
     } catch (err) {
@@ -117,7 +144,11 @@ const SalesForm = () => {
     setCustomerId('');
     setSavedSaleId(null);
     setTotalAmount(0);
+    setNewCustomerName('');
+    setNewCustomerAddress('');
+    setNewCustomerContact('');
   };
+
 
   const handleGeneratePDF = () => {
     const element = componentRef.current;
@@ -132,42 +163,146 @@ const SalesForm = () => {
     html2pdf().from(element).set(opt).save();
   };
 
-  const selectedCustomer = customers.find(c => c._id === customerId);
+  const selectedCustomer = customerId
+    ? customers.find(c => c._id === customerId)
+    : {
+      name: newCustomerName,
+      contact: newCustomerContact,
+      address: newCustomerAddress,
+    };
+
 
   return (
     <div className="container mt-4">
-      <h2> Sales Billing </h2>
+      <h2>Sales Billing</h2>
       <form onSubmit={handleSubmit}>
+
         <div className="mb-3">
-          <label className="form-label">Select Customer</label>
-          <select
-            className="form-select"
-            value={customerId}
-            onChange={e => setCustomerId(e.target.value)}
-            required
-          >
-            <option value="">-- Select Customer --</option>
-            {customers.map(c => (
-              <option key={c._id} value={c._id}>{c.name} - {c.contact}</option>
-            ))}
-          </select>
+          <label className="form-label">Search or Select Customer</label>
+          <Select
+            options={customers.map(c => ({
+              value: c._id,
+              label: `${c.name} - ${c.contact}`
+            }))}
+            onChange={option => {
+              setCustomerId(option ? option.value : '');
+              setNewCustomerName('');  // Clear manual entry if selected
+            }}
+            placeholder="Search customer..."
+            isClearable
+          />
+        </div>
+
+        {/* Manual customer entry */}
+        <div className="mb-3">
+          <label className="form-label"> Enter New Customer Name</label>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Enter customer name"
+            value={newCustomerName}
+            onChange={e => {
+              setNewCustomerName(e.target.value);
+              setCustomerId('');  // Clear dropdown if typing new name
+            }}
+          />
         </div>
 
         <div className="mb-3">
-          <label className="form-label">Select Product</label>
-          <div className="d-flex flex-wrap gap-2">
-            {products.map(p => (
-              <button
-                key={p._id}
-                type="button"
-                className="btn btn-outline-primary"
-                onClick={() => addItem(p._id)}
-              >
-                {p.name} (₹{p.price})
-              </button>
-            ))}
-          </div>
+          <label className="form-label">Customer Contact Number</label>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Enter contact number"
+            value={newCustomerContact}
+            onChange={e => setNewCustomerContact(e.target.value)}
+          />
         </div>
+
+        <div className="mb-3">
+          <label className="form-label">Customer Address</label>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Enter address"
+            value={newCustomerAddress}
+            onChange={e => setNewCustomerAddress(e.target.value)}
+          />
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Search & Select Product</label>
+          <Select
+            options={products.map(p => ({
+              value: p._id,
+              label: `${p.name} (₹${p.price})`
+            }))}
+            onChange={option => addItem(option.value)}
+            placeholder="Type product name..."
+            isClearable
+          />
+        </div>
+
+
+
+        {saleItems.length > 0 && (
+          <div className="mb-3">
+            <table className="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Qty</th>
+                  <th>Rate</th>
+                  <th>Total</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {saleItems.map((item, index) => {
+                  const product = products.find(p => p._id === item.product);
+                  if (!product) return null;
+
+                  return (
+                    <tr key={product._id}>
+                      <td>{product.name}</td>
+                      <td>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const newQty = parseInt(e.target.value) || 1;
+                            const updatedItems = [...saleItems];
+                            updatedItems[index].quantity = newQty;
+                            setSaleItems(updatedItems);
+                          }}
+                          className="form-control"
+                          style={{ width: '80px' }}
+                        />
+                      </td>
+                      <td>₹{product.price}</td>
+                      <td>₹{(product.price * item.quantity).toFixed(2)}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-danger btn-sm"
+                          onClick={() => {
+                            const updatedItems = saleItems.filter((_, i) => i !== index);
+                            setSaleItems(updatedItems);
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+
 
         {/* Optional: Visible Invoice Preview for user */}
         <h5 className="mt-4">Invoice Preview:</h5>
@@ -181,19 +316,6 @@ const SalesForm = () => {
           />
         </div>
 
-        {/* Optional: Visible Invoice Preview for user */}
-        {/* <h5 className="mt-4">Invoice Preview:</h5>
-        <div className="mb-3 border p-3 bg-light">
-          <InvoicePreview
-            customer={selectedCustomer || {}}
-            saleItems={saleItems}
-            products={products}
-            invoiceNo={invoiceNo}
-            totalAmount={totalAmount}
-          />
-        </div> */}
-
-        {/* Hidden component for printing */}
         <div style={{ display: 'none' }}>
           <InvoicePreview
             ref={componentRef}

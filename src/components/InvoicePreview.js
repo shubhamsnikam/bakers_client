@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
 import qrCodeBase64 from '../components/assets/img.jpeg'
-import logo from '../components/assets/logo.png'
+import logo from '../components/assets/logo.jpeg'
 
 const InvoicePreview = forwardRef(({ customer = {}, saleItems = [], products = [], invoiceNo = '', totalAmount = 0 }, ref) => {
   const total = saleItems.reduce((sum, item) => {
@@ -18,10 +18,16 @@ const InvoicePreview = forwardRef(({ customer = {}, saleItems = [], products = [
     >
       {/* Company Header */}
       <div className="text-center mb-4">
+<<<<<<< HEAD
 
         <h3 className="mt-2">इंद्रायणी बेकर्स, स्वीट्स अँड केक्स </h3>
         <p> Indrayani Backers Khanapur Road Vita 415311 | Contact: +91 91460 06006</p>
    
+=======
+        <img src={logo} alt="Bakery Logo" style={{ height: '100px' }} />
+        <h3 className="mt-2"> इंद्रायणी बेकर्स, स्वीट्स अँड केक्स  </h3>
+        <p> Address:  Indrayani Backers Khanapur Road Vita 415311 | Contact: +91 91460 06006. </p>
+>>>>>>> 6aaed51 (updated)
         <hr />
       </div>
 
@@ -47,14 +53,30 @@ const InvoicePreview = forwardRef(({ customer = {}, saleItems = [], products = [
             <th>Total</th>
           </tr>
         </thead>
+
+        {/* Quantity Logic */}
         <tbody>
-          {saleItems.map(item => {
+          {saleItems.map((item, index) => {
             const product = products.find(p => p._id === item.product);
             if (!product) return null;
+
+            const handleQtyChange = (e) => {
+              const newQty = parseInt(e.target.value, 10) || 0;
+              item.quantity = newQty; // modifies the item directly
+            };
+
             return (
               <tr key={item.product}>
                 <td>{product.name}</td>
-                <td>{item.quantity}</td>
+                <td>
+                  <input
+                    type="number"
+                    min="1"
+                    value={item.quantity}
+                    onChange={handleQtyChange}
+                    style={{ width: '60px' }}
+                  />
+                </td>
                 <td>₹{product.price.toFixed(2)}</td>
                 <td>₹{(product.price * item.quantity).toFixed(2)}</td>
               </tr>
@@ -62,6 +84,7 @@ const InvoicePreview = forwardRef(({ customer = {}, saleItems = [], products = [
           })}
         </tbody>
       </table>
+
       {/* Footer with QR Code */}
       <div className="text-center mt-4">
         <p><strong>Scan to Pay:</strong></p>
@@ -77,7 +100,7 @@ const InvoicePreview = forwardRef(({ customer = {}, saleItems = [], products = [
         <h5><strong>Total Amount: ₹{total.toFixed(2)}</strong></h5>
       </div>
 
-      
+
 
       <p className="text-center mt-3">Thank you for shopping with us!</p>
     </div>

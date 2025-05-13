@@ -1,24 +1,26 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import html2pdf from 'html2pdf.js';
 
 const Ledger = () => {
-  const [ledgerData, setLedgerData] = useState([]); // All ledger data (both pending and new)
-  const [filteredData, setFilteredData] = useState([]); // Filtered data based on customer
-  const [customers, setCustomers] = useState([]); // Customer data
-  const [products, setProducts] = useState([]); // Products data
-  const [customerId, setCustomerId] = useState(''); // Filter by customer ID
-  const [customerName, setCustomerName] = useState(''); // Filter by customer name
-  const [newCustomerId, setNewCustomerId] = useState(''); // Customer ID for new ledger
-  const [newProductIds, setNewProductIds] = useState([]); // Product IDs for new ledger
-  const [newTotal, setNewTotal] = useState(''); // Total amount for new ledger
-  const [loading, setLoading] = useState(false); // Loading state
+  const [ledgerData, setLedgerData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [customerId, setCustomerId] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [newCustomerId, setNewCustomerId] = useState('');
+  const [newProductIds, setNewProductIds] = useState([]);
+  const [newTotal, setNewTotal] = useState('');
+  const [loading, setLoading] = useState(false);
+  const componentRefs = useRef({}); // 🟢 Store individual refs
 
-  // Fetch products from API
+
   const fetchProducts = async () => {
     try {
-      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/products`);
+      const res = await axios.get(`/api/products`);
       setProducts(res.data);
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -26,7 +28,7 @@ const Ledger = () => {
     }
   };
 
-  // Group ledger entries by customer
+
   const groupByCustomer = (data) => {
     const grouped = data.reduce((acc, entry) => {
       if (entry.customer && entry.customer._id && !acc[entry.customer._id]) {
@@ -37,15 +39,13 @@ const Ledger = () => {
     return Object.values(grouped);
   };
 
-  // Fetch all ledger data (including pending and newly added)
   const fetchLedger = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/ledger`);
-      const allLedgers = res.data
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort ledger by date (latest first)
+      const res = await axios.get(`/api/ledger`);
+      const allLedgers = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setLedgerData(allLedgers);
-      setFilteredData(groupByCustomer(allLedgers)); // Group by customer
+      setFilteredData(groupByCustomer(allLedgers));
       toast.success('Ledger Data Loaded Successfully');
     } catch (err) {
       console.error('Error fetching ledger:', err);
@@ -55,10 +55,10 @@ const Ledger = () => {
     }
   }, []);
 
-  // Fetch customers for selection in the form
+
   const fetchCustomers = async () => {
     try {
-      const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/customers`);
+      const res = await axios.get(`/api/customers`);
       setCustomers(res.data);
     } catch (err) {
       console.error('Error fetching customers:', err);
@@ -71,68 +71,80 @@ const Ledger = () => {
     fetchProducts();
     fetchLedger();
 
-    // Auto-refresh ledger data every 10 seconds
-    const interval = setInterval(fetchLedger, 10000);
-
-    // Cleanup interval on component unmount
-    return () => clearInterval(interval);
+    return () => clearInterval();
   }, [fetchLedger]);
 
-  // Handle customer-based filtering
   const filterByCustomer = () => {
     const filtered = ledgerData.filter(entry => {
       const matchesCustomerId = customerId ? entry.customer?._id === customerId : true;
       const matchesCustomerName = customerName ? entry.customer?.name?.toLowerCase().includes(customerName.toLowerCase()) : true;
       return matchesCustomerId && matchesCustomerName;
     });
-
     setFilteredData(groupByCustomer(filtered));
-    if (filtered.length > 0) {
-      toast.info(`Filtered ${filtered.length} record(s)`);
-    } else {
-      toast.warning('No Matching Records Found');
-    }
+    filtered.length > 0
+      ? toast.info(`Filtered ${filtered.length} record(s)`)
+      : toast.warning('No Matching Records Found');
   };
 
-  // Clear filters and show all records
   const handleClearFilters = () => {
     setCustomerId('');
     setCustomerName('');
-    setFilteredData(groupByCustomer(ledgerData)); // Reset the filtered data
+    setFilteredData(groupByCustomer(ledgerData));
     toast.info('Filters Cleared');
   };
 
-  // Add a new ledger entry
   const handleAddLedger = async () => {
+    // Validate required fields
     if (!newCustomerId || !newTotal || newProductIds.length === 0) {
       return toast.warning('Customer, Products, and Total amount are required');
     }
 
     try {
-      const productNames = newProductIds.map(id => products.find(p => p._id === id)?.name).filter(Boolean);
-      await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/ledger`, {
+      // Parse input total to float
+      let newTotalAmount = parseFloat(newTotal);
+
+      // ✅ Find existing ledger entry for this customer (if any)
+      const existingLedger = ledgerData.find(entry => entry.customer._id === newCustomerId);
+
+      // ✅ If a previous ledger exists, add current total to it
+      if (existingLedger) {
+        newTotalAmount += parseFloat(existingLedger.total);
+      }
+
+      // ✅ Get product names based on selected product IDs
+      const productNames = newProductIds
+        .map(id => products.find(p => p._id === id)?.name)
+        .filter(Boolean); // remove any undefined
+
+      // ✅ Submit the updated ledger entry
+      await axios.post(`/api/ledger`, {
         customer: newCustomerId,
         products: productNames,
-        total: parseFloat(newTotal),
+        total: newTotalAmount
       });
-      toast.success('New Ledger Entry Added');
+
+      toast.success('Ledger updated successfully');
+
+      // ✅ Reset form fields
       setNewCustomerId('');
       setNewProductIds([]);
       setNewTotal('');
-      fetchLedger(); // Refresh ledger data
+      fetchLedger(); // Refresh the ledger list
     } catch (err) {
       console.error(err);
-      toast.error('Failed to Add Ledger Entry');
+      toast.error('Failed to add/update ledger');
     }
   };
 
-  // Mark a ledger entry as paid
+
+
+
   const markAsPaid = async (id) => {
     try {
-      const res = await axios.patch(`${process.env.REACT_APP_BACKEND_URL}/api/ledger/${id}/pay`);
+      const res = await axios.patch(`/api/ledger/${id}/pay`);
       if (res.data.message === 'Ledger marked as paid') {
         toast.success('Ledger Marked as Paid');
-        fetchLedger(); // Refresh ledger data
+        fetchLedger();
       } else {
         toast.error('Failed to Mark as Paid');
       }
@@ -140,6 +152,45 @@ const Ledger = () => {
       toast.error('Failed to Mark as Paid');
     }
   };
+
+  const handleGeneratePDF = (ledgerId) => {
+    const element = componentRefs.current[ledgerId];
+    const opt = {
+      margin: 0.3,
+      filename: `ledger_${ledgerId}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+    if (element) {
+      html2pdf().from(element).set(opt).save();
+    } else {
+      toast.error("PDF content not found");
+    }
+  };
+
+  // 💰 Handle partial payment
+  const handlePartialPay = async (id) => {
+    const amount = prompt('Enter partial amount to pay:');
+    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+      return toast.warning('Please enter a valid amount');
+    }
+    try {
+      const res = await axios.patch(`/api/ledger/${id}/partial-pay`, {
+        amount: parseFloat(amount),
+      });
+      res.data.success ? toast.success('Partial payment updated') : toast.error(res.data.message);
+      fetchLedger();
+    } catch (err) {
+      console.error('Partial payment error:', err);
+      toast.error('Error processing partial payment');
+    }
+  };
+
+
+
+
+
 
   return (
     <div className="container mt-4">
@@ -175,27 +226,45 @@ const Ledger = () => {
         <div className="col-md-3 align-self-end">
           <button className="btn btn-primary mt-2" onClick={filterByCustomer}>Filter</button>
           <button className="btn btn-secondary mt-2 ms-2" onClick={handleClearFilters}>Clear Filters</button>
+
         </div>
       </div>
+
 
       {/* Ledger Display */}
       {loading ? (
         <p>Loading...</p>
       ) : filteredData.length === 0 ? (
-        <p>No pending Data Available. </p>
+        <p>No pending Data Available.</p>
       ) : (
         filteredData.map((entry, index) => (
-          <div key={index} className="card mb-3 shadow">
+          <div
+            key={index}
+            className="card mb-3 shadow"
+            ref={(el) => (componentRefs.current[entry._id] = el)} // ✅ Assign ref here
+          >
             <div className="card-header bg-dark text-white d-flex justify-content-between align-items-center">
               <span><strong>{entry.customer?.name || 'Unknown'}</strong> | {entry.customer?.contact || 'N/A'}</span>
-              <button className="btn btn-sm btn-success" onClick={() => markAsPaid(entry._id)}>Mark as Paid</button>
+              <div>
+                <button className="btn btn-sm btn-success me-2" onClick={() => markAsPaid(entry._id)}>Mark as Paid</button>
+                <button className="btn btn-sm btn-info me-2" onClick={() => handlePartialPay(entry._id)}>Partial Pay</button>
+                <button className="btn btn-sm btn-warning" onClick={() => handleGeneratePDF(entry._id)}>Download PDF</button>
+
+              </div>
             </div>
             <div className="card-body">
               <p><strong>Address:</strong> {entry.customer?.address || 'N/A'}</p>
               <p><strong>Date:</strong> {new Date(entry.createdAt).toLocaleString()}</p>
-              <p><strong>Products Purchased:</strong> {entry.products?.join(', ') || 'None'}</p>
+              <p><strong>Products Purchased:</strong> {entry.products?.map(p => {
+                const product = products.find(product => product._id === p); // Find product by ID
+                return product ? product.name : 'Unknown Product'; // If product exists, return the name, else 'Unknown Product'
+              }).join(', ')}</p>
+
               <p><strong>Total Pending Amount:</strong> ₹{entry.total?.toFixed(2) || '0.00'}</p>
             </div>
+
+
+
           </div>
         ))
       )}
