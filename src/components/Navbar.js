@@ -4,11 +4,9 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 const Navbar = () => (
   <nav className="navbar navbar-expand-lg navbar-dark bg-dark px-4">
-<<<<<<< HEAD
+
     <Link className="navbar-brand" to="/">  इंद्रायणी बेकर्स </Link>
-=======
-    <Link className="navbar-brand" to="/"> इंद्रायणी बेकर्स </Link>
->>>>>>> 6aaed51 (updated)
+
     <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
       <span className="navbar-toggler-icon"></span>
     </button>
