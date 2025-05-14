@@ -1,0 +1,17 @@
+.bakery-dashboard {
+    background-image: url('https://wallpapersok.com/images/high/aesthetic-pink-bakery-stand-f2pj7oycqjf4lbbr.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    min-height: 100vh;
+    padding: 2rem;
+    position: relative;
+  }
+  
+  
+  .bakery-overlay {
+    background-color: rgba(255, 255, 255, 0.85); /* Soft white overlay */
+    border-radius: 15px;
+    padding: 2rem;
+  }
+  
